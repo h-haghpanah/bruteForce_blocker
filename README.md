@@ -22,7 +22,7 @@ A Python-based Brute Force attack detection system for web servers, integrated w
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/hesam-haghpanah/bruteforce-blocker.git
+git https://github.com/h-haghpanah/BruteForce_Blocker.git
 cd bruteforce-blocker
 ```
 
