@@ -1,6 +1,9 @@
 from librouteros import connect
 from decouple import config
 from datetime import datetime, timedelta
+from apps.utils.log import LogFile
+import traceback
+file_log = LogFile()
 
 
 class MikrotikAPI:
@@ -25,7 +28,9 @@ class MikrotikAPI:
                 comment=comment
             )
         except Exception as e:
-            print("Mikrotik connection failed:", e)
+            error = f"Failed to add IP {ip} to address list {address_list}: {e}"
+            print(error)
+            file_log.error(traceback.format_exc(), e)
             return False
         return True
 
@@ -44,7 +49,9 @@ class MikrotikAPI:
                     })
             return results
         except Exception as e:
-            print("Mikrotik connection failed (get):", e)
+            error = f"Mikrotik connection failed (get): {e}"
+            print(error)
+            file_log.error(traceback.format_exc(), e)
             return []
 
     def remove_address_list_entry(self, entry_id):
@@ -52,9 +59,11 @@ class MikrotikAPI:
             api_path = self.api.path("ip", "firewall", "address-list")
             api_path.remove(entry_id)
             print(f"Entry {entry_id} removed successfully.")
+            file_log.info(f"Entry {entry_id} removed successfully.")
             return True
         except Exception as e:
             print("Mikrotik connection failed (remove):", e)
+            file_log.error(traceback.format_exc(), e)
             return False
 
     def remove_old_address_list_entries(self, address_list, older_than_minutes=20):

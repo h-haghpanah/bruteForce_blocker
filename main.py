@@ -3,6 +3,11 @@ from api.mikrotik import MikrotikAPI
 import schedule
 import time
 from decouple import config
+from web_server import app
+import threading
+from apps.utils.log import LogFile
+
+file_log = LogFile()
 
 
 class MikrotikIPBlocker:
@@ -18,9 +23,7 @@ class MikrotikIPBlocker:
         self.time_interval_minutes = config("TIME_INTERVAL_MINUTES", cast=int, default=1)
 
     def run(self):
-        print("Dsdsdsds")
         alerts = self.detector.run()
-        print(f"Run completed. Detected {len(alerts)} alerts.")
         if self.mikrotik:
             if alerts:
                 for alert in alerts:
@@ -30,11 +33,26 @@ class MikrotikIPBlocker:
                 self.mikrotik.remove_old_address_list_entries(self.address_list, older_than_minutes=self.mikrotik_block_time_min)
 
 
-if __name__ == "__main__":
+def run_web_server():
+    web_server_host = config("WEB_SERVER_HOST", cast=str, default="0.0.0.0")
+    web_server_port = config("WEB_SERVER_PORT", cast=int, default=5000)
+    web_server_debug = config("WEB_SERVER_DEBUG", cast=bool, default=True)
+    app.run(host=web_server_host, port=web_server_port, debug=web_server_debug, use_reloader=False)
+
+
+def run_scheduler():
     job = MikrotikIPBlocker()
     schedule.every(10).seconds.do(job.run)
-    print(job.time_interval_minutes)
     print("BruteForceBlocker started...")
     while True:
         schedule.run_pending()
+        time.sleep(1)
+
+
+if __name__ == "__main__":
+    t1 = threading.Thread(target=run_web_server, daemon=True)
+    t2 = threading.Thread(target=run_scheduler, daemon=True)
+    t1.start()
+    t2.start()
+    while True:
         time.sleep(1)

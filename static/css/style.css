@@ -1,0 +1,27 @@
+body {
+    direction: ltr;
+    font-family: sans-serif;
+}
+
+h2 {
+    text-align: center;
+}
+
+table.dataTable td {
+    white-space: normal !important;
+    word-wrap: break-word;
+    vertical-align: top;
+}
+
+td.url-col {
+    max-width: 250px;
+}
+
+td.ua-col {
+    max-width: 300px;
+}
+.container {
+    max-width: 1800px;
+    margin: auto;
+    padding: 20px;
+}

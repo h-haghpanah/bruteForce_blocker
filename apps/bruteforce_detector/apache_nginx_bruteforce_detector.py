@@ -4,6 +4,11 @@ from datetime import datetime, timedelta
 from collections import defaultdict, deque
 import json
 from zoneinfo import ZoneInfo
+import sqlite3
+import traceback
+from apps.utils.log import LogFile
+
+file_log = LogFile()
 
 
 class BruteForceDetector:
@@ -17,22 +22,56 @@ class BruteForceDetector:
         self.router_ip = config("MIKROTIK_HOST", cast=str)
         self.router_user = config("MIKROTIK_USER", cast=str)
         self.router_pass = config("MIKROTIK_PASS", cast=str)
-
-        self.white_list_ip = set(config("WHITE_LIST_IP", default="").split(","))  # comma-separated
+        self.white_list_ip = set(config("WHITE_LIST_IP", default="").split(","))
         self.white_list_url = set(config("WHITE_LIST_URL", default="").split(","))
-
-        self.save_alerts = config("SAVE_ALERTS", cast=bool, default=True)
-
+        self.save_alert_logs = config("SAVE_ALERT_LOGS", cast=bool, default=True)
         self.access_log_lines = config("ACCESS_LOG_LINES", cast=int, default=0)
-        self.tz_name = config("TIMEZONE", default="UTC")
+        self.tz_name = config("ACCESS_LOG_TIMEZONE", default="UTC")
         self.timezone = ZoneInfo(self.tz_name)
-
         self.combined_parser = apache_log_parser.make_parser(
             '%h %l %u %t "%r" %>s %b "%{Referer}i" "%{User-Agent}i"'
         )
         self.clf_parser = apache_log_parser.make_parser(
             '%h %l %u %t "%r" %>s %b'
         )
+        self.db_file = config("SQLITE_DB_FILE", cast=str, default="bruteforce.db")
+        self._init_db()
+
+    def _init_db(self):
+        conn = sqlite3.connect(self.db_file)
+        c = conn.cursor()
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS alerts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ip TEXT,
+                url TEXT,
+                method TEXT,
+                user_agent TEXT,
+                attempts INTEGER,
+                window_start TEXT,
+                window_end TEXT,
+                created_at TEXT
+            )
+        """)
+        conn.commit()
+        conn.close()
+
+    def _save_to_db(self, alerts):
+        conn = sqlite3.connect(self.db_file)
+        c = conn.cursor()
+        now = datetime.now(self.timezone).isoformat()
+        for a in alerts:
+            c.execute("""
+                INSERT INTO alerts (ip, url, method, user_agent, attempts, window_start, window_end, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                a["ip"], a["url"], a.get("method"),
+                a.get("user_agent"), a["attempts"],
+                a["window_start"], a["window_end"],
+                now
+            ))
+        conn.commit()
+        conn.close()
 
     def parse_line(self, line):
         try:
@@ -67,7 +106,6 @@ class BruteForceDetector:
                         timestamp = timestamp.replace(tzinfo=self.timezone)
                     else:
                         timestamp = timestamp.astimezone(self.timezone)
-                    # print("timestamp:", timestamp, "now:", now)
                     if not (now - self.time_interval_minutes <= timestamp <= now):
                         continue
                     key = (ip, url)
@@ -89,6 +127,7 @@ class BruteForceDetector:
                         })
 
                 except Exception as e:
+                    file_log.error(traceback.format_exc(), e)
                     print("Parse error:", e)
                     continue
 
@@ -96,12 +135,9 @@ class BruteForceDetector:
             f"{a['ip']}_{a['url']}": a
             for a in alerts
         }.values()
-        if self.save_alerts and unique_alerts:
+        if self.save_alert_logs and unique_alerts:
             with open(self.alert_log, "a", encoding="utf-8") as f:
                 for item in unique_alerts:
                     f.write(json.dumps(item, ensure_ascii=False) + "\n")
+            self._save_to_db(unique_alerts)
         return unique_alerts
-
-
-bd = BruteForceDetector()
-bd.run()
