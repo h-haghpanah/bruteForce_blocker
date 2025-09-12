@@ -22,8 +22,8 @@ A Python-based Brute Force attack detection system for web servers, integrated w
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/h-haghpanah/BruteForce_Blocker.git
-cd BruteForce_Blocker
+git clone https://github.com/h-haghpanah/bruteForce_blocker.git
+cd bruteForce_blocker
 ```
 
 2. Install dependencies:
