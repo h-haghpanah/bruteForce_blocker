@@ -34,19 +34,27 @@ class MikrotikIPBlocker:
 
 
 def run_web_server():
-    web_server_host = config("WEB_SERVER_HOST", cast=str, default="0.0.0.0")
-    web_server_port = config("WEB_SERVER_PORT", cast=int, default=5000)
-    web_server_debug = config("WEB_SERVER_DEBUG", cast=bool, default=True)
-    app.run(host=web_server_host, port=web_server_port, debug=web_server_debug, use_reloader=False)
+    try:
+        web_server_host = config("WEB_SERVER_HOST", cast=str, default="0.0.0.0")
+        web_server_port = config("WEB_SERVER_PORT", cast=int, default=5000)
+        web_server_debug = config("WEB_SERVER_DEBUG", cast=bool, default=True)
+        app.run(host=web_server_host, port=web_server_port, debug=web_server_debug, use_reloader=False)
+    except Exception as e:
+        file_log.error(f"Web server error: {e}")
+        print(f"Web server error: {e}")
 
 
 def run_scheduler():
-    job = MikrotikIPBlocker()
-    schedule.every(10).seconds.do(job.run)
-    print("BruteForceBlocker started...")
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
+    try:
+        job = MikrotikIPBlocker()
+        schedule.every(job.time_interval_minutes).minutes.do(job.run)
+        print("BruteForceBlocker started...")
+        while True:
+            schedule.run_pending()
+            time.sleep(1)
+    except Exception as e:
+        file_log.error(f"Scheduler error: {e}")
+        print(f"Scheduler error: {e}")
 
 
 if __name__ == "__main__":
