@@ -6,6 +6,7 @@ from decouple import config
 from web_server import app
 import threading
 from apps.utils.log import LogFile
+import traceback
 
 file_log = LogFile()
 
@@ -40,7 +41,7 @@ def run_web_server():
         web_server_debug = config("WEB_SERVER_DEBUG", cast=bool, default=True)
         app.run(host=web_server_host, port=web_server_port, debug=web_server_debug, use_reloader=False)
     except Exception as e:
-        file_log.error(f"Web server error: {e}")
+        file_log.error(traceback.format_exc(), f"Web server error: {e}")
         print(f"Web server error: {e}")
 
 
@@ -53,7 +54,7 @@ def run_scheduler():
             schedule.run_pending()
             time.sleep(1)
     except Exception as e:
-        file_log.error(f"Scheduler error: {e}")
+        file_log.error(traceback.format_exc(), f"Scheduler error: {e}")
         print(f"Scheduler error: {e}")
 
 
