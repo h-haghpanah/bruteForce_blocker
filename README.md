@@ -14,6 +14,7 @@ A Python-based Brute Force attack detection system for web servers, integrated w
 - **Configurable time windows and thresholds**.
 - **Web server** for monitoring and integration purposes.
 - **Automated cleanup** of old blocked IP entries on Mikrotik.
+- **Country whitelist support** – Skip blocking for requests coming from trusted countries.
 
 ---
 
@@ -73,6 +74,7 @@ This will start both the web server and the brute force detection scheduler in p
 | `MIKROTIK_BLOCK_TIME_MIN` | int | `60` | Duration (in minutes) to keep IPs blocked on Mikrotik. |
 | `WHITE_LIST_IP` | comma-separated string | `` | IPs to exclude from detection and blocking. |
 | `WHITE_LIST_URL` | comma-separated string | `` | URLs to exclude from detection. |
+| `WHITE_LIST_COUNTRY` | comma-separated string | `` | Country codes (e.g., `US,DE,FR`) whose IPs should be whitelisted and never blocked. |
 | `ACCESS_LOG_TIMEZONE` | string | `UTC` | Timezone of the web server logs (used for timestamp parsing). |
 | `SQLITE_DB_FILE` | string | `bruteforce_alerts.db` | SQLite database file to store alert records. |
 | `WEB_SERVER_HOST` | string | `0.0.0.0` | Host for the internal web server. |

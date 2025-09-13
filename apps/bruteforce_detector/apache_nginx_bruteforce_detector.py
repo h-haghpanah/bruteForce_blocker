@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo
 import sqlite3
 import traceback
 from apps.utils.log import LogFile
+from apps.utils.ip import IPTools
 
 file_log = LogFile()
 
@@ -24,10 +25,12 @@ class BruteForceDetector:
         self.router_pass = config("MIKROTIK_PASS", cast=str)
         self.white_list_ip = set(config("WHITE_LIST_IP", default="").split(","))
         self.white_list_url = set(config("WHITE_LIST_URL", default="").split(","))
+        self.white_list_country = set(config("WHITE_LIST_COUNTRY", default="").split(","))
         self.save_alert_logs = config("SAVE_ALERT_LOGS", cast=bool, default=True)
         self.access_log_lines = config("ACCESS_LOG_LINES", cast=int, default=0)
         self.tz_name = config("ACCESS_LOG_TIMEZONE", default="UTC")
         self.timezone = ZoneInfo(self.tz_name)
+        self.ip_tools = IPTools()
         self.combined_parser = apache_log_parser.make_parser(
             '%h %l %u %t "%r" %>s %b "%{Referer}i" "%{User-Agent}i"'
         )
@@ -79,6 +82,14 @@ class BruteForceDetector:
         except apache_log_parser.LineDoesntMatchException:
             return self.clf_parser(line)
 
+    def ip_or_url_allowed(self, ip, url):
+        ip_location = self.ip_tools.ip_location(ip=ip)
+        if ip_location in self.white_list_country:
+            return True
+        if ip in self.white_list_ip or url in self.white_list_url:
+            return True
+        return False
+
     def run(self):
         attempts = defaultdict(lambda: deque())
         alerts = []
@@ -97,7 +108,6 @@ class BruteForceDetector:
                     ts = log.get("time_received_isoformat")
                     method = log.get("request_method")
                     user_agent = log.get("request_header_user_agent")
-
                     if not (ip and url and ts):
                         continue
 
@@ -113,7 +123,7 @@ class BruteForceDetector:
                     while dq and dq[0] < timestamp - self.time_interval_minutes:
                         dq.popleft()
                     dq.append(timestamp)
-                    if ip in self.white_list_ip or url in self.white_list_url:
+                    if self.ip_or_url_allowed(ip=ip, url=url):
                         continue
                     if len(dq) > self.max_attempts:
                         alerts.append({
